@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Cross-Ref EC2 Instance.
+
+Parameters:
+  CrKeyName:
+    Description: Allocated Key Name
+    Type: AWS::EC2::KeyPair::KeyName
+  
+  
+
+  CrEnvironmentType:
+    Description: Environment For Deployment
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+      - qa
+
+
+Mappings:
+  CrRegionMap:
+    us-east-1:
+      HVM64: ami-02396cdd13e9a1257
+    us-east-2:
+      HVM64: ami-0cd3dfa4e37921605
+
+  CrEnvironmentMap:
+      dev: 
+        instanceType: t2.micro
+      prod: 
+        instanceType: t2.small
+      qa:
+        instanceType: t2.medium    
+
+Conditions: 
+  CheckEnvironmentForProd: !Equals [!Ref CrEnvironmentType, prod]
+  CreateSecurityGroupForDev: !Not [{CheckEnvironmentForProd}]
+
+
+Resources:
+  CrDevEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !FindInMap
+        - CrEnvironmentMap
+        - !Ref CrEnvironmentType
+        - instanceType
+  
+      ImageId: !FindInMap 
+        - CrRegionMap
+        - !Ref 'AWS::Region'
+        - HVM64
+      KeyName: !Ref CrKeyName
+      SecurityGroups: 
+        - !ImportValue stack1-MyDevSSHGlobalSG
+      AvailabilityZone: !ImportValue stack1-InstanceAz
+
+  
+  
+
+  CrProdEIP:
+    Type: AWS::EC2::EIP
+    Condition: CheckEnvironmentForProd
+    Description: Add EIP for Production
+    Properties:
+      InstanceId: !Ref CrDevEC2Instance
+
+
+  
+      

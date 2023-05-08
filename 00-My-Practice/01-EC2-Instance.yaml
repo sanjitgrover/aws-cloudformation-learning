@@ -32,6 +32,8 @@ Parameters:
       - dev
       - prod
       - qa
+
+
 Mappings:
   MyRegionMap:
     us-east-1:
@@ -74,6 +76,7 @@ Resources:
   
   SecurityGroupsDev:
     Type: AWS::EC2::SecurityGroup
+    Condition: CreateSecurityGroupForDev
     Properties:  
       GroupName: dev-sg-ssh
       SecurityGroupIngress: 
@@ -102,3 +105,27 @@ Resources:
     Description: Add EIP for Production
     Properties:
       InstanceId: !Ref MyDevEC2Instance
+
+Outputs:
+  MyInstanceId:
+    Description: MY Instance ID
+    Value: !Ref MyDevEC2Instance
+  
+  MyDNSName:
+    Description: My Public DNS
+    Value: !GetAtt MyDevEC2Instance.PublicDnsName
+  
+  MyInstanceAvailabilityZone:
+    Description: My Instance Availability Zone
+    Value: !GetAtt MyDevEC2Instance.AvailabilityZone
+    Export: 
+      Name: !Sub "${AWS::StackName}-InstanceAz"
+
+  MyDevSecurityGroup:
+    Description: My Dev SG
+    Value: !Ref SecurityGroupsDev
+    Condition: CreateSecurityGroupForDev
+    Export:
+      Name: !Join ["-" [!Ref 'AWS::StackName', MyDevSSHGlobalSG]]
+  
+      
