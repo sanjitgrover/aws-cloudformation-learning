@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Basic EC2 Instance.
+
+Parameters:
+  MyKeyName:
+    Description: Allocated Key Name
+    Type: AWS::EC2::KeyPair::KeyName
+  
+  MyAvailabilityZone:
+    Description: Select the AZ 
+    Type: String
+    Default: us-east-1a
+    AllowedValues:
+      - us-east-1a
+      - us-east-1b
+
+  # MyInstanceType:  
+  #   Description: Select the EC2 Instance Type or use AWS Systems Manager 
+  #   Type: String
+  #   # Type: AWS::SSM::Parameter::Value<String>
+  #   Default: t2.micro
+  #   AllowedValues:
+  #     - t2.micro
+  #     - t2.medium
+  #     - t2.small
+
+  MyEnvironmentType:
+    Description: Environment For Deployment
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+      - qa
+Mappings:
+  MyRegionMap:
+    us-east-1:
+      HVM64: ami-02396cdd13e9a1257
+    us-east-2:
+      HVM64: ami-0cd3dfa4e37921605
+
+  MyEnvironmentMap:
+      dev: 
+        instanceType: t2.micro
+      prod: 
+        instanceType: t2.small
+      qa:
+        instanceType: t2.medium    
+
+Conditions: 
+  CheckEnvironmentForProd: !Equals [!Ref MyEnvironmentType, prod]
+  CreateSecurityGroupForDev: !Not [{CheckEnvironmentForProd}]
+
+
+Resources:
+  MyDevEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !FindInMap
+        - MyEnvironmentMap
+        - !Ref MyEnvironmentType
+        - instanceType
+  
+      ImageId: !FindInMap 
+        - MyRegionMap
+        - !Ref 'AWS::Region'
+        - HVM64
+      KeyName: !Ref MyKeyName
+      SecurityGroups: !If [CheckEnvironmentForDev, [!Ref SecurityGroupsDev], [!Ref SecurityGroupsProd]  ]
+      
+
+      AvailabilityZone: !Ref MyAvailabilityZone 
+
+  
+  SecurityGroupsDev:
+    Type: AWS::EC2::SecurityGroup
+    Properties:  
+      GroupName: dev-sg-ssh
+      SecurityGroupIngress: 
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '8081'
+          ToPort: '8081'
+          CidrIp: 0.0.0.0/0
+
+  SecurityGroupsProd:
+    Type: AWS::EC2::SecurityGroup
+    Properties:  
+      GroupName: dev-sg-ssh
+      SecurityGroupIngress: 
+        - IpProtocol: tcp
+          FromPort: '8080'
+          ToPort: '8080'
+          CidrIp: 0.0.0.0/0
+
+  MyProdEIP:
+    Type: AWS::EC2::EIP
+    Condition: CheckEnvironmentForProd
+    Description: Add EIP for Production
+    Properties:
+      InstanceId: !Ref MyDevEC2Instance
