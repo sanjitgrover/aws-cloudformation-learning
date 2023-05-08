@@ -14,7 +14,7 @@ Parameters:
       - us-east-1a
       - us-east-1b
 
-  # MyInstanceType:  
+  # MyInstanceType:  Hardcoded
   #   Description: Select the EC2 Instance Type or use AWS Systems Manager 
   #   Type: String
   #   # Type: AWS::SSM::Parameter::Value<String>
